@@ -1,12 +1,12 @@
 // Root component — immediately.run renders the default export of THIS file.
-// Global CSS is imported here (not main.tsx). The pilot ELEVATED-write system
-// app: reads the host theme and sets it via the gated theme:set action.
+// The theme switcher (R3-501 · HOST_THEMING_SPEC §8.2): the `widget.theme` app
+// upgraded in place from the two-state toggle.
 import "./index.css";
 import "./App.css";
-import ThemeToggle from "./components/ThemeToggle";
+import Switcher from "./components/Switcher";
 
 function App() {
-  return <ThemeToggle />;
+  return <Switcher />;
 }
 
 export default App;

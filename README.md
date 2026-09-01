@@ -1,13 +1,22 @@
-# theme-toggle
+# theme-toggle → theme-switcher
 
-The smallest [immediately.run](https://immediately.run) system app, and the
-designated **pilot for the capability pipeline** (`UI_AS_APPS_SPEC` §5.4 / §8.5,
-design brief 06).
+The `widget.theme` system app, upgraded **in place** from the two-state toggle to
+the **theme switcher** (R3-501 · `HOST_THEMING_SPEC` §8.2). Loaded into a chrome
+region by the host; not meant to be run standalone.
 
-It reads the host UI theme (`theme:read`, baseline) and sets it (`theme:set`,
-**elevated**) — a segmented light/dark control reflecting the current host theme.
-It updates optimistically, then confirms from the host's re-push (the loop closes
-via `theme:read`). A build running without `theme:set` degrades to a disabled
-"preview only" state rather than erroring.
+It is the forkable surface for appearance:
 
-Loaded into a chrome region by the host; not meant to be run standalone.
+- **Current selection** — the active theme + resolved mode (`useHostThemeSelection`);
+- **Theme list** from the `theme-catalog` channel (`useThemeCatalog`), with
+  label-collision disambiguation ("Nord (repo)");
+- **Mode list** of the selected theme (System + the theme's polarity modes);
+- **Add theme** → invokes the `open-bundle` task with `kinds: ["theme"]` →
+  `addThemeSource(location)`, with **synchronous inline adoption feedback** — a
+  gated-out candidate surfaces here in the switcher, never another surface;
+- **Refresh** (the catalogue re-pushes via the channel) and **remove**.
+
+Requires the elevated `theme:set` + `theme:sources` + `task:invoke`
+capabilities (the `widget.theme` ceiling in `defaults.ts`); a fork without them
+degrades to read-only.
+
+Built against `@immediately-run/sdk` 0.59.0 (the widened theme surface).
