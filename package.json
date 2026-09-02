@@ -5,7 +5,7 @@
   "type": "module",
   "immediately.run": {
     "requireLatest": "stale_ok",
-    "invokes": ["open-bundle"]
+    "invokes": [{ "task": "open-bundle", "version": "1" }]
   },
   "scripts": {
     "dev": "vite",
