@@ -5,15 +5,20 @@ import { readFileSync } from 'node:fs';
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-// The SDK boundary: `useHostTheme` is controllable per-case; everything the
-// Switcher imports beside it resolves to inert no-ops (its own behaviour is
-// not this test's axis).
-const held = { theme: 'light' as 'light' | 'dark' };
+// The SDK boundary: `useHostTheme`, the catalog and the selection setter are
+// controllable per-case; everything else the Switcher imports resolves to
+// inert no-ops.
+const held = {
+  theme: 'light' as 'light' | 'dark',
+  modeId: 'system',
+  catalog: { themes: [] as { themeKey: string; label: string; modes: { id: string; polarity: 'light' | 'dark' }[] }[] },
+};
+const setSelection = vi.fn();
 vi.mock('@immediately-run/sdk', () => ({
   useHostTheme: () => held.theme,
-  useHostThemeSelection: () => ({ themeKey: 'immediately-run-default', modeId: 'system' }),
-  useThemeCatalog: () => ({ themes: [] }),
-  setHostThemeSelection: () => {},
+  useHostThemeSelection: () => ({ themeKey: 'immediately-run-default', modeId: held.modeId }),
+  useThemeCatalog: () => held.catalog,
+  setHostThemeSelection: (...args: unknown[]) => setSelection(...(args as [])),
   addThemeSource: async () => {
     throw new Error('no host transport');
   },
@@ -25,7 +30,12 @@ vi.mock('@immediately-run/sdk', () => ({
 
 import App from './App';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setSelection.mockClear();
+  held.modeId = 'system';
+  held.catalog = { themes: [] };
+});
 
 describe('R3-834 — polarity from useHostTheme, set on <html>', () => {
   it('a light host sets html[data-theme="light"]', () => {
@@ -59,12 +69,52 @@ describe('R3-834 — the mode control is one line', () => {
 
   it('the wrap directive is gone from the segment control, which is a grid', () => {
     const seg = rule('.tt__seg');
-    expect(seg).not.toMatch(/flex-\s*wrap:\s*wrap/);
-    expect(seg).toMatch(/display:\s*grid/);
-    expect(seg).toMatch(/grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(0,\s*1fr\)\)/);
+    expect(seg).not.toMatch(/flex-\s*wrap\s*:\s*wrap/i);
+    expect(seg).toMatch(/display\s*:\s*grid/i);
+    expect(seg).toMatch(/grid-template-columns\s*:\s*repeat\(auto-fit,\s*minmax\(0,\s*1fr\)\)/i);
   });
 
   it('no rule anywhere reintroduces the wrap directive', () => {
-    expect(css).not.toMatch(/flex-\s*wrap:\s*wrap/);
+    expect(css).not.toMatch(/flex-\s*wrap\s*:\s*wrap/i);
+  });
+});
+
+// ── R3-834 review round 1 — the APG radiogroup, driven ───────────────────────
+// role="radiogroup" announces arrow-key movement; the round-1 reviewers found
+// none existed (the item's "keeps" premise was false). Implemented for real:
+// a roving tabindex (the checked option is the tab stop) and arrows move
+// focus AND select — pinned here.
+describe('R3-834 — the mode control is a real radiogroup', () => {
+  it('arrow keys move focus and select the next option (roving tabindex)', async () => {
+    held.catalog = {
+      themes: [
+        {
+          themeKey: 'immediately-run-default',
+          label: 'immediately.run default',
+          modes: [
+            { id: 'light', polarity: 'light' },
+            { id: 'dark', polarity: 'dark' },
+          ],
+        },
+      ],
+    };
+    const { container } = render(<App />);
+    const seg = container.querySelector('.tt__seg') as HTMLElement;
+    const opts = [...seg.querySelectorAll<HTMLElement>('.tt__opt')];
+    expect(opts.length).toBe(3); // System + light + dark
+    // The checked option is the tab stop; the others are out of the tab order.
+    expect(opts[0].tabIndex).toBe(0);
+    expect(opts[1].tabIndex).toBe(-1);
+    opts[0].focus();
+    opts[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(document.activeElement).toBe(opts[1]);
+    expect(setSelection).toHaveBeenCalledWith({ theme: 'immediately-run-default', mode: 'light' });
+    // The selection follows: the newly selected option becomes the tab stop.
+    held.modeId = 'light';
+    // (The roving tabindex is derived from the selection, so a re-render moves
+    // the stop; the arrows move within whatever the current stop is.)
+    opts[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    expect(document.activeElement).toBe(opts[0]);
+    expect(setSelection).toHaveBeenLastCalledWith({ theme: 'immediately-run-default', mode: 'system' });
   });
 });

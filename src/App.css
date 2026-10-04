@@ -1,6 +1,7 @@
 /* Theme switcher — the `widget.theme` app (R3-501 · HOST_THEMING_SPEC §8.2),
    upgraded in place from the two-state toggle. Tokens from index.css (the
-   immediately.run design system). */
+   app's own neutral palette — apps receive only the host's polarity, never
+   its token values). */
 
 .tt {
   display: flex;

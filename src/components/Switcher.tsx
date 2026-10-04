@@ -102,12 +102,32 @@ function Switcher() {
       </div>
 
       {/* Mode list of the selected theme (fixed host labels; the catalogue's
-          mode ids are the resolved ones). */}
-      <div className="tt__seg" role="radiogroup" aria-label="Theme mode">
+          mode ids are the resolved ones). R3-834 review round 1: the APG
+          radiogroup pattern is implemented for real — a roving tabindex
+          (the checked option is the tab stop) and arrow keys move focus and
+          select, exactly what role="radiogroup" announces. */}
+      <div
+        className="tt__seg"
+        role="radiogroup"
+        aria-label="Theme mode"
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+          e.preventDefault();
+          const group = e.currentTarget;
+          const opts = [...group.querySelectorAll<HTMLElement>(".tt__opt:not(:disabled)")];
+          if (opts.length < 2) return;
+          const at = opts.indexOf(document.activeElement as HTMLElement);
+          const dir = e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 1;
+          const next = opts[(at + dir + opts.length) % opts.length];
+          next.focus();
+          next.click();
+        }}
+      >
         <button
           type="button"
           role="radio"
           aria-checked={modeId === "system"}
+          tabIndex={modeId === "system" ? 0 : -1}
           className={`tt__opt${modeId === "system" ? " is-active" : ""}`}
           onClick={() => setHostThemeSelection({ theme: themeKey, mode: "system" })}
         >
@@ -120,6 +140,7 @@ function Switcher() {
             type="button"
             role="radio"
             aria-checked={modeId === m.id}
+            tabIndex={modeId === m.id ? 0 : -1}
             className={`tt__opt${modeId === m.id ? " is-active" : ""}`}
             onClick={() => setHostThemeSelection({ theme: themeKey, mode: m.id })}
           >
