@@ -76,7 +76,7 @@
   white-space: nowrap;
 }
 .tt__opt:hover:not(.is-active):not(:disabled) { color: var(--ink); }
-.tt__opt:focus-visible { outline: none; box-shadow: 0 0 0 1px var(--line-2); }
+.tt__opt:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ink); }
 .tt__opt:disabled { cursor: default; opacity: 0.55; }
 
 /* active = a solid raised fill with the strong ink label (R3-834: neutral, not
@@ -161,7 +161,7 @@
   color: var(--ink-3);
   cursor: pointer;
 }
-.tt__remove:hover { background: var(--danger-bg, rgba(220, 60, 60, 0.12)); color: var(--danger, #d94a4a); }
+.tt__remove:hover { background: var(--danger-bg, rgba(180, 40, 40, 0.12)); color: var(--danger, #b3261e); }
 
 /* add row */
 .tt__add {
@@ -194,8 +194,8 @@
   max-width: 34ch;
   margin: 0;
 }
-.tt__note--err { color: var(--danger, #d94a4a); }
-.tt__note--ok { color: var(--ok, #2f7d4f); }
+.tt__note--err { color: var(--danger, #b3261e); }
+.tt__note--ok { color: var(--ok, #1e6f45); }
 
 .tt__foot {
   font-size: 11px;

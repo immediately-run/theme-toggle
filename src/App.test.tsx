@@ -85,6 +85,28 @@ describe('R3-834 — the mode control is one line', () => {
 // a roving tabindex (the checked option is the tab stop) and arrows move
 // focus AND select — pinned here.
 describe('R3-834 — the mode control is a real radiogroup', () => {
+  it('a modeId matching no option still leaves the group tabbable (the APG fallback: the first radio)', () => {
+    held.catalog = {
+      themes: [
+        {
+          themeKey: 'immediately-run-default',
+          label: 'immediately.run default',
+          modes: [
+            { id: 'light', polarity: 'light' },
+            { id: 'dark', polarity: 'dark' },
+          ],
+        },
+      ],
+    };
+    // A stale mode id (the round-2 finding: the old theme's id sent to a new
+    // theme) must not drop the whole group out of the tab order.
+    held.modeId = 'a-stale-mode-from-another-theme';
+    const { container } = render(<App />);
+    const opts = [...container.querySelectorAll<HTMLElement>('.tt__opt')];
+    expect(opts[0].tabIndex).toBe(0); // the first option is the tab stop
+    expect(opts.slice(1).every((o) => o.tabIndex === -1)).toBe(true);
+  });
+
   it('arrow keys move focus and select the next option (roving tabindex)', async () => {
     held.catalog = {
       themes: [

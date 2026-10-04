@@ -49,6 +49,11 @@ function Switcher() {
   // Mode labels come from the catalogue (host-approved, bounded); the fixed
   // "System default" is always offered.
   const currentModes = currentEntry?.modes ?? [];
+  // The tab stop derived ONCE (APG radio group: the checked radio, else the
+  // first): a modeId matching no option must not drop the whole group out of
+  // the tab order (R3-834 review round 2).
+  const tabStopMode =
+    modeId === "system" || currentModes.some((m) => m.id === modeId) ? modeId : "system";
 
   /** Invoke the open-bundle picker for a theme bundle, then adopt it. */
   const addTheme = useCallback(async () => {
@@ -127,7 +132,7 @@ function Switcher() {
           type="button"
           role="radio"
           aria-checked={modeId === "system"}
-          tabIndex={modeId === "system" ? 0 : -1}
+          tabIndex={tabStopMode === "system" ? 0 : -1}
           className={`tt__opt${modeId === "system" ? " is-active" : ""}`}
           onClick={() => setHostThemeSelection({ theme: themeKey, mode: "system" })}
         >
@@ -140,7 +145,7 @@ function Switcher() {
             type="button"
             role="radio"
             aria-checked={modeId === m.id}
-            tabIndex={modeId === m.id ? 0 : -1}
+            tabIndex={tabStopMode === m.id ? 0 : -1}
             className={`tt__opt${modeId === m.id ? " is-active" : ""}`}
             onClick={() => setHostThemeSelection({ theme: themeKey, mode: m.id })}
           >
@@ -166,7 +171,11 @@ function Switcher() {
                 onClick={() =>
                   setHostThemeSelection({
                     theme: entry.themeKey,
-                    mode: modeId === "system" ? "system" : currentModes[0]?.id ?? "system",
+                    // The NEW theme's first mode — never the old theme's mode
+                    // id mixed into a theme that may not carry it (the
+                    // round-2 finding: a stale id leaves every option
+                    // unchecked and untabbable).
+                    mode: modeId === "system" ? "system" : entry.modes[0]?.id ?? "system",
                   })
                 }
               >

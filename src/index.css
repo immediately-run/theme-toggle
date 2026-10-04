@@ -30,6 +30,11 @@
   /* — The one accent seam (neutral until a theme push carries values) — */
   --accent:    #6b6f78;
 
+  /* — Status colours (per polarity; ≥4.5:1 on this palette's --bg) — */
+  --danger:    #ff8f8f;
+  --ok:        #7fd6a4;
+  --danger-bg: rgba(255, 143, 143, 0.14);
+
   /* — Type families — */
   --disp: "Gabarito", system-ui, sans-serif;     /* display / headings */
   --sans: "Public Sans", system-ui, sans-serif;  /* body / UI */
@@ -57,8 +62,11 @@ html[data-theme="light"] {
   --line-2:    rgba(30,30,40,.24);
   --ink:       #1d1e22;
   --ink-2:     #5d5f66;
-  --ink-3:     #6b6e76;
+  --ink-3:     #65686f;   /* ≥4.5:1 on --bg/--panel/--panel-2 (R3-834 review) */
   --accent:    #5c6068;
+  --danger:    #b3261e;
+  --ok:        #1e6f45;
+  --danger-bg: rgba(179, 38, 30, 0.10);
   --shadow-modal: 0 24px 70px rgba(30,30,40,.18);
   --shadow-pop:   0 12px 34px rgba(30,30,40,.14);
 }
