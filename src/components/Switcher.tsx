@@ -192,10 +192,9 @@ function Switcher() {
         )}
       </div>
 
-      <p className="tt__foot">
-        Themes are fetched, gated, and stored by the host. A theme with an
-        accessibility gate failure is refused here, inline.
-      </p>
+      {/* R3-834: one sentence — the frame is 320px and the old two-sentence
+          footer pushed the content past it. */}
+      <p className="tt__foot">Themes are checked for contrast before they apply.</p>
     </section>
   );
 }

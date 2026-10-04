@@ -6,7 +6,9 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 14px;
+  /* R3-834: 12px — the frame is 320px and the footer is one sentence; the old
+     14px plus the two-sentence footer pushed the content past the card. */
+  padding: 12px;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--sans);
@@ -34,10 +36,13 @@
   font-size: 13px;
 }
 
-/* segmented control — the mode list of the selected theme */
+/* segmented control — the mode list of the selected theme.
+   R3-834: ONE line, always — a grid with equal minmax(0, 1fr) tracks can never
+   wrap (the old flex-wrap dropped "dark" onto a second line in the ~250px
+   settings card). */
 .tt__seg {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 2px;
   padding: 3px;
   border-radius: var(--r-pill);
@@ -48,8 +53,9 @@
 .tt__opt {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 6px 8px;
   border: 0;
   border-radius: var(--r-pill);
   background: transparent;
@@ -59,15 +65,41 @@
   font-weight: 600;
   cursor: pointer;
   transition: color 120ms ease, background 120ms ease;
+  min-width: 0;
+}
+/* The label can shrink to ellipsis, never push the row to wrap. */
+.tt__opt span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .tt__opt:hover:not(.is-active):not(:disabled) { color: var(--ink); }
-.tt__opt:focus-visible { outline: none; box-shadow: var(--glow); }
+.tt__opt:focus-visible { outline: none; box-shadow: 0 0 0 1px var(--line-2); }
 .tt__opt:disabled { cursor: default; opacity: 0.55; }
 
-/* active = the signature gradient */
+/* active = a solid raised fill with the strong ink label (R3-834: neutral, not
+   branded — no gradient). */
 .tt__opt.is-active {
-  background: var(--grad);
-  color: #16101a;
+  background: var(--panel-2);
+  color: var(--ink);
+}
+
+/* Below 280px the icon stays and the label is visually hidden but kept for
+   screen readers (R3-834). */
+@media (max-width: 280px) {
+  .tt__opt span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
 }
 
 /* theme list */
