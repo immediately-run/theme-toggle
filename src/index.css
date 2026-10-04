@@ -1,7 +1,12 @@
 /* Global foundation: brand fonts, design tokens, and base resets.
    Imported from App.tsx (NOT main.tsx) so immediately.run applies it at runtime.
-   Tokens mirror the immediately.run design system — pull colors, fonts, radii,
-   and shadows from here rather than hard-coding values. */
+
+   R3-834: NEUTRAL, not branded. Apps receive only the host's polarity (§9.1),
+   never the host's token values, so a brand palette clashes with every
+   non-default theme. The palettes are neutral greys; the single `--accent`
+   defaults to a neutral and exists only so hover/focus states have one seam a
+   future theme push (R3-836) could target. `html[data-theme="light"]` is set
+   from `useHostTheme()` in App.tsx — never from `prefers-color-scheme`. */
 
 /* Web fonts MUST be the first line of the file. */
 @import url('https://fonts.googleapis.com/css2?family=Gabarito:wght@400;500;600;700;800;900&family=Public+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
@@ -9,32 +14,26 @@
 /* ---------------------------------------------------------------- DARK (default) */
 :root {
   /* — Surfaces — */
-  --bg:        #0a0b11;   /* cool near-black page background */
-  --panel:     #13141d;   /* tile / card surface */
-  --panel-2:   #191b26;   /* raised / hover surface */
+  --bg:        #111214;   /* neutral near-black page background */
+  --panel:     #1a1b1e;   /* tile / card surface */
+  --panel-2:   #232428;   /* raised / hover surface */
 
   /* — Hairlines — */
-  --line:      rgba(180,170,225,.14);  /* default border */
-  --line-2:    rgba(180,170,225,.22);  /* stronger border / focus ring base */
+  --line:      rgba(160,160,170,.16);  /* default border */
+  --line-2:    rgba(160,160,170,.26);  /* stronger border / focus ring base */
 
   /* — Text — */
-  --ink:       #ecebf4;   /* primary text (near-white, faint violet) */
-  --ink-2:     #9b97b3;   /* muted violet-gray — secondary text */
-  --ink-3:     #6a677f;   /* faint — captions, disabled */
+  --ink:       #ececee;   /* primary text */
+  --ink-2:     #a7a9ae;   /* muted — secondary text */
+  --ink-3:     #8b8d94;   /* faint — captions, disabled (≥4.5:1 on --bg/--panel, R3-834 review) */
 
-  /* — Accents — */
-  --accent:    oklch(0.74 0.17 350);   /* pink-magenta — the brand through-line */
-  --accent-2:  oklch(0.66 0.18 295);   /* violet */
-  --accent-3:  oklch(0.82 0.12 340);   /* soft pink highlight (tags, badges) */
+  /* — The one accent seam (neutral until a theme push carries values) — */
+  --accent:    #6b6f78;
 
-  /* — Signature gradient + glow — */
-  --grad: linear-gradient(96deg, #f6f1fb 0%, #f49ad4 46%, #b285f2 100%);
-  --glow: 0 0 0 1px rgba(150,110,240,.5), 0 0 34px rgba(150,110,240,.32);
-
-  /* — Solid accent fallbacks (for text/icons that can't take a gradient) — */
-  --accent-pink:   #f49ad4;
-  --accent-violet: #b285f2;
-  --accent-hot:    #c43d96;  /* the saturated "accent tile" magenta */
+  /* — Status colours (per polarity; ≥4.5:1 on this palette's --bg) — */
+  --danger:    #ff8f8f;
+  --ok:        #7fd6a4;
+  --danger-bg: rgba(255, 143, 143, 0.14);
 
   /* — Type families — */
   --disp: "Gabarito", system-ui, sans-serif;     /* display / headings */
@@ -50,36 +49,26 @@
   --r-pill: 30px; /* buttons, nav links, badges */
 
   /* — Elevation — */
-  --shadow-card:  6px 6px 0 var(--accent-2);   /* hard offset on tile hover */
   --shadow-modal: 0 24px 70px rgba(0,0,0,.5);
   --shadow-pop:   0 12px 34px rgba(0,0,0,.45);
-
-  /* — Ambient page wash (radial accents behind content) — */
-  --page-wash:
-    radial-gradient(60% 50% at 78% 0%, rgba(178,133,242,.12), transparent 60%),
-    radial-gradient(50% 40% at 12% 8%, rgba(244,154,212,.07), transparent 60%);
 }
 
 /* ---------------------------------------------------------------- LIGHT */
 html[data-theme="light"] {
-  --bg:        #f6f4fb;
+  --bg:        #f4f4f6;
   --panel:     #ffffff;
-  --panel-2:   #f0ecf8;
-  --line:      rgba(40,24,70,.12);
-  --line-2:    rgba(40,24,70,.20);
-  --ink:       #1c1726;
-  --ink-2:     #5d5670;
-  --ink-3:     #938aa6;
-  --accent:    oklch(0.58 0.21 1);
-  --accent-2:  oklch(0.52 0.21 295);
-  --accent-3:  oklch(0.50 0.20 350);
-  --grad: linear-gradient(96deg, #c43d96 0%, #9a45e6 100%);
-  --glow: 0 0 0 1px rgba(150,90,235,.4), 0 8px 26px rgba(150,90,235,.20);
-  --shadow-modal: 0 24px 70px rgba(40,24,70,.18);
-  --shadow-pop:   0 12px 34px rgba(40,24,70,.14);
-  --page-wash:
-    radial-gradient(60% 50% at 78% 0%, rgba(154,69,230,.09), transparent 60%),
-    radial-gradient(50% 40% at 12% 8%, rgba(212,69,154,.06), transparent 60%);
+  --panel-2:   #ececef;
+  --line:      rgba(30,30,40,.14);
+  --line-2:    rgba(30,30,40,.24);
+  --ink:       #1d1e22;
+  --ink-2:     #5d5f66;
+  --ink-3:     #65686f;   /* ≥4.5:1 on --bg/--panel/--panel-2 (R3-834 review) */
+  --accent:    #5c6068;
+  --danger:    #b3261e;
+  --ok:        #1e6f45;
+  --danger-bg: rgba(179, 38, 30, 0.10);
+  --shadow-modal: 0 24px 70px rgba(30,30,40,.18);
+  --shadow-pop:   0 12px 34px rgba(30,30,40,.14);
 }
 
 /* ---------------------------------------------------------------- reset + base */
@@ -87,20 +76,14 @@ html[data-theme="light"] {
 html { scroll-behavior: smooth; }
 body {
   background: var(--bg);
-  background-image: var(--page-wash);
   color: var(--ink);
   font: 400 16px/1.5 var(--sans);
   -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
+  /* R3-834: a 320px frame cannot afford 100vh (viewport height + margins
+     forces a scrollbar); the app is content-sized. */
+  min-height: 0;
   overflow-x: hidden;
 }
 a { color: inherit; text-decoration: none; }
-::selection { background: var(--accent); color: #16101a; }
+::selection { background: var(--accent); color: var(--ink); }
 
-/* Apply the signature gradient to any text: <span className="grad-text">…</span> */
-.grad-text {
-  background: var(--grad);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}

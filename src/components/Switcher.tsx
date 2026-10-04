@@ -49,6 +49,11 @@ function Switcher() {
   // Mode labels come from the catalogue (host-approved, bounded); the fixed
   // "System default" is always offered.
   const currentModes = currentEntry?.modes ?? [];
+  // The tab stop derived ONCE (APG radio group: the checked radio, else the
+  // first): a modeId matching no option must not drop the whole group out of
+  // the tab order (R3-834 review round 2).
+  const tabStopMode =
+    modeId === "system" || currentModes.some((m) => m.id === modeId) ? modeId : "system";
 
   /** Invoke the open-bundle picker for a theme bundle, then adopt it. */
   const addTheme = useCallback(async () => {
@@ -102,12 +107,32 @@ function Switcher() {
       </div>
 
       {/* Mode list of the selected theme (fixed host labels; the catalogue's
-          mode ids are the resolved ones). */}
-      <div className="tt__seg" role="radiogroup" aria-label="Theme mode">
+          mode ids are the resolved ones). R3-834 review round 1: the APG
+          radiogroup pattern is implemented for real — a roving tabindex
+          (the checked option is the tab stop) and arrow keys move focus and
+          select, exactly what role="radiogroup" announces. */}
+      <div
+        className="tt__seg"
+        role="radiogroup"
+        aria-label="Theme mode"
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+          e.preventDefault();
+          const group = e.currentTarget;
+          const opts = [...group.querySelectorAll<HTMLElement>(".tt__opt:not(:disabled)")];
+          if (opts.length < 2) return;
+          const at = opts.indexOf(document.activeElement as HTMLElement);
+          const dir = e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 1;
+          const next = opts[(at + dir + opts.length) % opts.length];
+          next.focus();
+          next.click();
+        }}
+      >
         <button
           type="button"
           role="radio"
           aria-checked={modeId === "system"}
+          tabIndex={tabStopMode === "system" ? 0 : -1}
           className={`tt__opt${modeId === "system" ? " is-active" : ""}`}
           onClick={() => setHostThemeSelection({ theme: themeKey, mode: "system" })}
         >
@@ -120,6 +145,7 @@ function Switcher() {
             type="button"
             role="radio"
             aria-checked={modeId === m.id}
+            tabIndex={tabStopMode === m.id ? 0 : -1}
             className={`tt__opt${modeId === m.id ? " is-active" : ""}`}
             onClick={() => setHostThemeSelection({ theme: themeKey, mode: m.id })}
           >
@@ -145,7 +171,11 @@ function Switcher() {
                 onClick={() =>
                   setHostThemeSelection({
                     theme: entry.themeKey,
-                    mode: modeId === "system" ? "system" : currentModes[0]?.id ?? "system",
+                    // The NEW theme's first mode — never the old theme's mode
+                    // id mixed into a theme that may not carry it (the
+                    // round-2 finding: a stale id leaves every option
+                    // unchecked and untabbable).
+                    mode: modeId === "system" ? "system" : entry.modes[0]?.id ?? "system",
                   })
                 }
               >
@@ -186,16 +216,15 @@ function Switcher() {
           )}
           <span>Add theme…</span>
         </button>
-        {addState.status === "error" && <p className="tt__note tt__note--err">{addState.reason}</p>}
+        {addState.status === "error" && <p role="status" className="tt__note tt__note--err">{addState.reason}</p>}
         {addState.status === "adopted" && (
-          <p className="tt__note tt__note--ok">Added. Pick it from the list above.</p>
+          <p role="status" className="tt__note tt__note--ok">Added. Pick it from the list above.</p>
         )}
       </div>
 
-      <p className="tt__foot">
-        Themes are fetched, gated, and stored by the host. A theme with an
-        accessibility gate failure is refused here, inline.
-      </p>
+      {/* R3-834: one sentence — the frame is 320px and the old two-sentence
+          footer pushed the content past it. */}
+      <p className="tt__foot">Themes are checked for contrast before they apply.</p>
     </section>
   );
 }
