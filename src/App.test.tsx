@@ -140,3 +140,66 @@ describe('R3-834 — the mode control is a real radiogroup', () => {
     expect(setSelection).toHaveBeenLastCalledWith({ theme: 'immediately-run-default', mode: 'system' });
   });
 });
+
+// ── R3-834 review round 3 — the theme-row selection payload, driven ──────────
+// The round-2 fix changed the payload (the NEW theme's first mode, never the
+// old theme's id) with no test; this PR's own history had already proved that
+// exact expression buggy. Pinned here, all three arms.
+describe('R3-834 — the theme-row selection payload', () => {
+  type Mode = { id: string; polarity: 'light' | 'dark' };
+  type Entry = { themeKey: string; label: string; modes: Mode[] };
+  const TWO_THEMES: { themes: Entry[] } = {
+    themes: [
+      {
+        themeKey: 'immediately-run-default',
+        label: 'immediately.run default',
+        modes: [
+          { id: 'light', polarity: 'light' },
+          { id: 'dark', polarity: 'dark' },
+        ],
+      },
+      {
+        themeKey: 'danube-dusk',
+        label: 'Danube Dusk',
+        modes: [
+          { id: 'dawn', polarity: 'light' },
+          { id: 'dusk', polarity: 'dark' },
+        ],
+      },
+    ],
+  };
+
+  it('clicking a theme row selects that theme with ITS first mode — never the old theme\'s id', async () => {
+    held.catalog = TWO_THEMES;
+    held.modeId = 'dark'; // the old theme's second mode — danube-dusk carries no "dark"
+    const { container } = render(<App />);
+    const row = [...container.querySelectorAll('.tt__theme-select')].find(
+      (b) => (b.textContent || '').includes('Danube'),
+    ) as HTMLElement;
+    expect(row).toBeTruthy();
+    row.click();
+    expect(setSelection).toHaveBeenCalledWith({ theme: 'danube-dusk', mode: 'dawn' });
+  });
+
+  it('the system arm: a system modeId crossing to a theme stays system', async () => {
+    held.catalog = TWO_THEMES;
+    held.modeId = 'system';
+    const { container } = render(<App />);
+    const row = [...container.querySelectorAll('.tt__theme-select')].find(
+      (b) => (b.textContent || '').includes('Danube'),
+    ) as HTMLElement;
+    row.click();
+    expect(setSelection).toHaveBeenCalledWith({ theme: 'danube-dusk', mode: 'system' });
+  });
+
+  it('the empty-modes arm: a theme with no modes falls back to system', async () => {
+    held.catalog = { themes: [...TWO_THEMES.themes, { themeKey: 'empty-theme', label: 'Empty', modes: [] as Mode[] }] };
+    held.modeId = 'dark';
+    const { container } = render(<App />);
+    const row = [...container.querySelectorAll('.tt__theme-select')].find(
+      (b) => (b.textContent || '').includes('Empty'),
+    ) as HTMLElement;
+    row.click();
+    expect(setSelection).toHaveBeenCalledWith({ theme: 'empty-theme', mode: 'system' });
+  });
+});

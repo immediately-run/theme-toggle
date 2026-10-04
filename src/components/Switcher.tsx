@@ -216,9 +216,9 @@ function Switcher() {
           )}
           <span>Add theme…</span>
         </button>
-        {addState.status === "error" && <p className="tt__note tt__note--err">{addState.reason}</p>}
+        {addState.status === "error" && <p role="status" className="tt__note tt__note--err">{addState.reason}</p>}
         {addState.status === "adopted" && (
-          <p className="tt__note tt__note--ok">Added. Pick it from the list above.</p>
+          <p role="status" className="tt__note tt__note--ok">Added. Pick it from the list above.</p>
         )}
       </div>
 
