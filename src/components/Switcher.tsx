@@ -15,7 +15,7 @@
 // The host gate rejects anything this frame may not do (`forbidden` for a
 // fork without `theme:set`/`theme:sources`); this UI degrades to a read-only
 // "preview" view rather than erroring.
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Check, Moon, Plus, RefreshCw, Sun, Trash2, Monitor } from "lucide-react";
 import {
   useHostThemeSelection,
@@ -63,6 +63,10 @@ function Switcher() {
   // the `useHostThemeSelection` push, never as local state.
   const [selectError, setSelectError] = useState<string | null>(null);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
+  // The in-flight latch is a REF, not state: two clicks in one tick (a real
+  // double-click) both read `pendingKey === null` before React commits, so a
+  // state-only guard is racy — the ref is checked-and-set synchronously.
+  const selectInFlight = useRef(false);
 
   // The current theme entry (may be the default — always in the catalogue).
   const currentEntry = catalog.themes.find((t) => t.themeKey === themeKey) ?? null;
@@ -81,14 +85,16 @@ function Switcher() {
   const select = useCallback(
     async (theme: string, mode: string) => {
       const key = `${theme}|${mode}`;
-      if (pendingKey) return;
+      if (selectInFlight.current) return;
+      selectInFlight.current = true;
       setSelectError(null);
       setPendingKey(key);
       const r = await selectTheme(theme, mode);
+      selectInFlight.current = false;
       setPendingKey(null);
       if (!r.ok) setSelectError(`That theme isn't available right now. ${r.reason}`);
     },
-    [pendingKey],
+    [],
   );
 
   /** Invoke the open-bundle picker for a theme bundle, then adopt it. */

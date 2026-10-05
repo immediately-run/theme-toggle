@@ -134,7 +134,11 @@ describe('R3-834 — the mode control is a real radiogroup', () => {
     // The selection follows: the newly selected option becomes the tab stop.
     held.modeId = 'light';
     // (The roving tabindex is derived from the selection, so a re-render moves
-    // the stop; the arrows move within whatever the current stop is.)
+    // the stop; the arrows move within whatever the current stop is. One
+    // selection is in flight at a time (R3-847's latch), so let it settle
+    // before the next arrow drives another select.)
+    await Promise.resolve();
+    await Promise.resolve();
     opts[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
     expect(document.activeElement).toBe(opts[0]);
     expect(setSelection).toHaveBeenLastCalledWith({ theme: 'immediately-run-default', mode: 'system' });

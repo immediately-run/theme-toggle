@@ -124,6 +124,48 @@ describe('R3-847 — a refused selection stays inline', () => {
     });
   });
 
+  it('a click during flight is ignored and shows the pending state; the guard lifts when it settles', async () => {
+    held.catalog = {
+      themes: [
+        {
+          themeKey: 'immediately-run-default',
+          label: 'immediately.run default',
+          modes: [
+            { id: 'light', polarity: 'light' },
+            { id: 'dark', polarity: 'dark' },
+          ],
+        },
+      ],
+    };
+    // A DEFERred host: the selection stays in flight until we let it go.
+    const gate = { release: null as null | (() => void) };
+    nextSelection = () =>
+      new Promise<void>((resolve) => {
+        gate.release = resolve;
+      });
+    const { container } = render(<Switcher />);
+
+    const sysArm = container.querySelector('.tt__opt') as HTMLElement;
+    sysArm.click();
+    sysArm.click(); // repeat click DURING flight
+    await waitFor(() => {
+      expect(setSelection).toHaveBeenCalledTimes(1); // the guard ignored the repeat
+    });
+    expect(sysArm.getAttribute('aria-busy')).toBe('true');
+    expect(sysArm.getAttribute('aria-disabled')).toBe('true');
+
+    gate.release?.();
+    await waitFor(() => {
+      expect(sysArm.getAttribute('aria-busy')).toBe('false');
+      expect(sysArm.getAttribute('aria-disabled')).toBe('false');
+    });
+    // The guard lifted: a new click goes through.
+    sysArm.click();
+    await waitFor(() => {
+      expect(setSelection).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it('with an empty catalogue the default row renders', () => {
     held.catalog = { themes: [] };
     const { container } = render(<Switcher />);
