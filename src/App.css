@@ -75,9 +75,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.tt__opt:hover:not(.is-active):not(:disabled) { color: var(--ink); }
+.tt__opt:hover:not(.is-active):not([aria-disabled="true"]) { color: var(--ink); }
 .tt__opt:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ink); }
-.tt__opt:disabled { cursor: default; opacity: 0.55; }
+.tt__opt[aria-disabled="true"] { cursor: default; opacity: 0.55; }
 
 /* active = a solid raised fill with the strong ink label (R3-834: neutral, not
    branded — no gradient). */
@@ -135,6 +135,13 @@
   cursor: pointer;
   text-align: left;
   padding: 4px 0;
+}
+
+/* R3-847 — an in-flight selection (aria-disabled, not disabled: the control
+   keeps focus instead of blurring to <body>). */
+.tt__theme-select[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: default;
 }
 .tt__theme-dot {
   width: 10px;

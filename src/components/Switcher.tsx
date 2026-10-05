@@ -15,17 +15,18 @@
 // The host gate rejects anything this frame may not do (`forbidden` for a
 // fork without `theme:set`/`theme:sources`); this UI degrades to a read-only
 // "preview" view rather than erroring.
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Check, Moon, Plus, RefreshCw, Sun, Trash2, Monitor } from "lucide-react";
 import {
   useHostThemeSelection,
   useThemeCatalog,
-  setHostThemeSelection,
   addThemeSource,
   removeThemeSource,
   invokeTask,
   type ThemeBundleLocation,
 } from "@immediately-run/sdk";
+import { selectTheme } from "../lib/select";
+import { modeFor } from "../lib/modeFor";
 
 /** The `open-bundle` task result (OPEN_BUNDLE_SPEC §2): a picked location. */
 interface OpenBundleResult {
@@ -38,10 +39,34 @@ type AddState =
   | { status: "error"; reason: string }
   | { status: "adopted"; themeKey: string };
 
+/** The default theme's registry key — the SDK keeps its copy private, so this
+ *  module owns the name (R3-847: one spelling, not six). */
+const DEFAULT_THEME_KEY = "immediately-run-default";
+
+/** §6's escape hatch, synthesized: the default row renders even when the
+ *  catalogue is empty or the channel has not arrived. An empty target makes
+ *  `modeFor` answer 'system' — the one selection the host always accepts. */
+const DEFAULT_THEME = {
+  themeKey: DEFAULT_THEME_KEY,
+  label: "immediately.run default",
+  modes: [] as { id: string; polarity: "light" | "dark" }[],
+};
+
 function Switcher() {
   const { themeKey, modeId } = useHostThemeSelection();
   const catalog = useThemeCatalog();
   const [addState, setAddState] = useState<AddState>({ status: "idle" });
+  // R3-847 — a refused selection surfaces HERE, inline, and the switcher (and
+  // the default row) stay clickable. `pendingKey` is the in-flight selection
+  // (`theme|mode`): while one runs, the clicked control is `aria-busy` and
+  // repeat clicks are ignored (R-IX-2); the applied selection arrives through
+  // the `useHostThemeSelection` push, never as local state.
+  const [selectError, setSelectError] = useState<string | null>(null);
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  // The in-flight latch is a REF, not state: two clicks in one tick (a real
+  // double-click) both read `pendingKey === null` before React commits, so a
+  // state-only guard is racy — the ref is checked-and-set synchronously.
+  const selectInFlight = useRef(false);
 
   // The current theme entry (may be the default — always in the catalogue).
   const currentEntry = catalog.themes.find((t) => t.themeKey === themeKey) ?? null;
@@ -54,6 +79,23 @@ function Switcher() {
   // the tab order (R3-834 review round 2).
   const tabStopMode =
     modeId === "system" || currentModes.some((m) => m.id === modeId) ? modeId : "system";
+
+  /** One selection, caught: a refusal becomes an inline note, never a
+   *  region-killing unhandled rejection (R3-847). */
+  const select = useCallback(
+    async (theme: string, mode: string) => {
+      const key = `${theme}|${mode}`;
+      if (selectInFlight.current) return;
+      selectInFlight.current = true;
+      setSelectError(null);
+      setPendingKey(key);
+      const r = await selectTheme(theme, mode);
+      selectInFlight.current = false;
+      setPendingKey(null);
+      if (!r.ok) setSelectError(`That theme isn't available right now. ${r.reason}`);
+    },
+    [],
+  );
 
   /** Invoke the open-bundle picker for a theme bundle, then adopt it. */
   const addTheme = useCallback(async () => {
@@ -99,7 +141,9 @@ function Switcher() {
       <div className="tt__current">
         <span className="tt__current-label">Current theme</span>
         <span className="tt__current-value">
-          {currentEntry ? disambiguated(currentEntry) : themeKey}
+          {/* R3-847: never a raw themeKey — an entry missing from the
+              catalogue reads "Unavailable theme". */}
+          {currentEntry ? disambiguated(currentEntry) : "Unavailable theme"}
           <span className="tt__current-mode">
             {modeId === "system" ? " · System default" : ` · ${modeId}`}
           </span>
@@ -119,7 +163,7 @@ function Switcher() {
           if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
           e.preventDefault();
           const group = e.currentTarget;
-          const opts = [...group.querySelectorAll<HTMLElement>(".tt__opt:not(:disabled)")];
+          const opts = [...group.querySelectorAll<HTMLElement>('.tt__opt:not([aria-disabled="true"])')];
           if (opts.length < 2) return;
           const at = opts.indexOf(document.activeElement as HTMLElement);
           const dir = e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 1;
@@ -132,9 +176,11 @@ function Switcher() {
           type="button"
           role="radio"
           aria-checked={modeId === "system"}
+          aria-busy={pendingKey === themeKey + "|system"}
+          aria-disabled={pendingKey !== null}
           tabIndex={tabStopMode === "system" ? 0 : -1}
           className={`tt__opt${modeId === "system" ? " is-active" : ""}`}
-          onClick={() => setHostThemeSelection({ theme: themeKey, mode: "system" })}
+          onClick={() => void select(themeKey, "system")}
         >
           <Monitor size={15} aria-hidden="true" />
           <span>System</span>
@@ -145,9 +191,11 @@ function Switcher() {
             type="button"
             role="radio"
             aria-checked={modeId === m.id}
+            aria-busy={pendingKey === themeKey + "|" + m.id}
+            aria-disabled={pendingKey !== null}
             tabIndex={tabStopMode === m.id ? 0 : -1}
             className={`tt__opt${modeId === m.id ? " is-active" : ""}`}
-            onClick={() => setHostThemeSelection({ theme: themeKey, mode: m.id })}
+            onClick={() => void select(themeKey, m.id)}
           >
             {m.polarity === "dark" ? (
               <Moon size={15} aria-hidden="true" />
@@ -159,31 +207,39 @@ function Switcher() {
         ))}
       </div>
 
-      {/* Theme list from the catalogue channel. */}
+      {/* Theme list from the catalogue channel, with §6's escape hatch folded
+          in as the first entry (R3-847): the default row ALWAYS renders —
+          empty catalogue, channel not arrived, refused selection — through the
+          same row template, and its click resolves to the one selection the
+          host always accepts (modeFor over an empty target is 'system'). */}
       <div className="tt__list" role="list" aria-label="Themes">
-        {catalog.themes.map((entry) => {
+        {[DEFAULT_THEME, ...catalog.themes.filter((entry) => entry.themeKey !== DEFAULT_THEME_KEY)]
+          .map((entry) => {
           const active = entry.themeKey === themeKey;
+          const targetMode = modeFor(modeId, currentModes, entry.modes);
           return (
             <div key={entry.themeKey} className={`tt__theme${active ? " is-active" : ""}`} role="listitem">
               <button
                 type="button"
                 className="tt__theme-select"
+                aria-busy={pendingKey === entry.themeKey + "|" + targetMode}
+                aria-disabled={pendingKey !== null}
                 onClick={() =>
-                  setHostThemeSelection({
-                    theme: entry.themeKey,
-                    // The NEW theme's first mode — never the old theme's mode
-                    // id mixed into a theme that may not carry it (the
-                    // round-2 finding: a stale id leaves every option
-                    // unchecked and untabbable).
-                    mode: modeId === "system" ? "system" : entry.modes[0]?.id ?? "system",
-                  })
+                  void select(
+                    entry.themeKey,
+                    // R3-847 — the user's intent, not a stale id: System
+                    // stays System; a fixed mode maps by polarity
+                    // (`modeFor`), so the target theme is never sent a mode
+                    // it does not carry.
+                    targetMode,
+                  )
                 }
               >
                 {active ? <Check size={15} aria-hidden="true" /> : <span className="tt__theme-dot" />}
-                <span>{disambiguated(entry)}</span>
+                <span>{entry.themeKey === DEFAULT_THEME_KEY ? "immediately.run default" : disambiguated(entry)}</span>
               </button>
               {active && <span className="tt__active-badge">active</span>}
-              {entry.themeKey !== "immediately-run-default" && (
+              {entry.themeKey !== DEFAULT_THEME_KEY && (
                 <button
                   type="button"
                   className="tt__remove"
@@ -198,9 +254,17 @@ function Switcher() {
           );
         })}
         {catalog.themes.length === 0 && (
-          <p className="tt__note">No themes yet. Add one from a repository or space.</p>
+          <p className="tt__note">No added themes yet. Add one from a repository or space.</p>
         )}
       </div>
+
+      {/* R3-847 — a refused selection's reason, inline under the control that
+          caused it; the switcher stays mounted and every row stays clickable. */}
+      {selectError && (
+        <p role="status" className="tt__note tt__note--err">
+          {selectError}
+        </p>
+      )}
 
       <div className="tt__add">
         <button

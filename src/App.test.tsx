@@ -2,7 +2,7 @@
 // `useHostTheme()` → `html[data-theme]`, never `prefers-color-scheme` (the OS
 // setting, not the host's), and the mode control is one line, always.
 import { readFileSync } from 'node:fs';
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // The SDK boundary: `useHostTheme`, the catalog and the selection setter are
@@ -134,7 +134,11 @@ describe('R3-834 — the mode control is a real radiogroup', () => {
     // The selection follows: the newly selected option becomes the tab stop.
     held.modeId = 'light';
     // (The roving tabindex is derived from the selection, so a re-render moves
-    // the stop; the arrows move within whatever the current stop is.)
+    // the stop; the arrows move within whatever the current stop is. One
+    // selection is in flight at a time (R3-847's latch), so let it settle —
+    // the options are aria-disabled while it runs — before the next arrow
+    // drives another select.)
+    await waitFor(() => expect(opts[1].getAttribute('aria-busy')).toBe('false'));
     opts[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
     expect(document.activeElement).toBe(opts[0]);
     expect(setSelection).toHaveBeenLastCalledWith({ theme: 'immediately-run-default', mode: 'system' });
@@ -162,23 +166,27 @@ describe('R3-834 — the theme-row selection payload', () => {
         themeKey: 'danube-dusk',
         label: 'Danube Dusk',
         modes: [
-          { id: 'dawn', polarity: 'light' },
-          { id: 'dusk', polarity: 'dark' },
+          { id: 'light', polarity: 'light' },
+          { id: 'dark', polarity: 'dark' },
         ],
       },
     ],
   };
 
-  it('clicking a theme row selects that theme with ITS first mode — never the old theme\'s id', async () => {
+  it('clicking a theme row maps the current polarity onto the target — never the old theme\'s id', async () => {
     held.catalog = TWO_THEMES;
-    held.modeId = 'dark'; // the old theme's second mode — danube-dusk carries no "dark"
+    held.modeId = 'dark';
     const { container } = render(<App />);
     const row = [...container.querySelectorAll('.tt__theme-select')].find(
       (b) => (b.textContent || '').includes('Danube'),
     ) as HTMLElement;
     expect(row).toBeTruthy();
     row.click();
-    expect(setSelection).toHaveBeenCalledWith({ theme: 'danube-dusk', mode: 'dawn' });
+    // R3-847: the intent (a dark mode) maps to danube-dusk's dark-polarity
+    // mode. The committed theme.json (site-main's fixture) gives Danube Dusk
+    // the mode ids light/dark with Dawn/Dusk as LABELS — the catalogue
+    // projects the ids.
+    expect(setSelection).toHaveBeenCalledWith({ theme: 'danube-dusk', mode: 'dark' });
   });
 
   it('the system arm: a system modeId crossing to a theme stays system', async () => {
