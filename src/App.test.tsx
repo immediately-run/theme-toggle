@@ -169,7 +169,7 @@ describe('R3-834 — the theme-row selection payload', () => {
     ],
   };
 
-  it('clicking a theme row selects that theme with ITS first mode — never the old theme\'s id', async () => {
+  it('clicking a theme row maps the current polarity onto the target — never the old theme\'s id', async () => {
     held.catalog = TWO_THEMES;
     held.modeId = 'dark'; // the old theme's second mode — danube-dusk carries no "dark"
     const { container } = render(<App />);
@@ -178,7 +178,9 @@ describe('R3-834 — the theme-row selection payload', () => {
     ) as HTMLElement;
     expect(row).toBeTruthy();
     row.click();
-    expect(setSelection).toHaveBeenCalledWith({ theme: 'danube-dusk', mode: 'dawn' });
+    // R3-847: the intent (a dark mode) maps to danube-dusk's dark-polarity
+    // mode ("dusk"), not the old id ("dark") and not blindly the first mode.
+    expect(setSelection).toHaveBeenCalledWith({ theme: 'danube-dusk', mode: 'dusk' });
   });
 
   it('the system arm: a system modeId crossing to a theme stays system', async () => {
