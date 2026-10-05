@@ -39,6 +39,19 @@ type AddState =
   | { status: "error"; reason: string }
   | { status: "adopted"; themeKey: string };
 
+/** The default theme's registry key — the SDK keeps its copy private, so this
+ *  module owns the name (R3-847: one spelling, not six). */
+const DEFAULT_THEME_KEY = "immediately-run-default";
+
+/** §6's escape hatch, synthesized: the default row renders even when the
+ *  catalogue is empty or the channel has not arrived. An empty target makes
+ *  `modeFor` answer 'system' — the one selection the host always accepts. */
+const DEFAULT_THEME = {
+  themeKey: DEFAULT_THEME_KEY,
+  label: "immediately.run default",
+  modes: [] as { id: string; polarity: "light" | "dark" }[],
+};
+
 function Switcher() {
   const { themeKey, modeId } = useHostThemeSelection();
   const catalog = useThemeCatalog();
@@ -158,7 +171,7 @@ function Switcher() {
           role="radio"
           aria-checked={modeId === "system"}
           aria-busy={pendingKey === themeKey + "|system"}
-          disabled={pendingKey !== null}
+          aria-disabled={pendingKey !== null}
           tabIndex={tabStopMode === "system" ? 0 : -1}
           className={`tt__opt${modeId === "system" ? " is-active" : ""}`}
           onClick={() => void select(themeKey, "system")}
@@ -173,7 +186,7 @@ function Switcher() {
             role="radio"
             aria-checked={modeId === m.id}
             aria-busy={pendingKey === themeKey + "|" + m.id}
-            disabled={pendingKey !== null}
+            aria-disabled={pendingKey !== null}
             tabIndex={tabStopMode === m.id ? 0 : -1}
             className={`tt__opt${modeId === m.id ? " is-active" : ""}`}
             onClick={() => void select(themeKey, m.id)}
@@ -188,42 +201,23 @@ function Switcher() {
         ))}
       </div>
 
-      {/* Theme list from the catalogue channel. */}
+      {/* Theme list from the catalogue channel, with §6's escape hatch folded
+          in as the first entry (R3-847): the default row ALWAYS renders —
+          empty catalogue, channel not arrived, refused selection — through the
+          same row template, and its click resolves to the one selection the
+          host always accepts (modeFor over an empty target is 'system'). */}
       <div className="tt__list" role="list" aria-label="Themes">
-        {/* R3-847 — §6's escape hatch, exactly once: the default row is ALWAYS
-            rendered (empty catalogue, channel not arrived, refused selection —
-            the default stays present and selectable), and its click is the one
-            selection the host always accepts. */}
-        <div
-          className={`tt__theme${themeKey === "immediately-run-default" ? " is-active" : ""}`}
-          role="listitem"
-        >
-          <button
-            type="button"
-            className="tt__theme-select"
-            aria-busy={pendingKey === "immediately-run-default|system"}
-            disabled={pendingKey !== null}
-            onClick={() => void select("immediately-run-default", "system")}
-          >
-            {themeKey === "immediately-run-default" ? (
-              <Check size={15} aria-hidden="true" />
-            ) : (
-              <span className="tt__theme-dot" />
-            )}
-            <span>immediately.run default</span>
-          </button>
-        </div>
-        {catalog.themes
-          .filter((entry) => entry.themeKey !== "immediately-run-default")
+        {[DEFAULT_THEME, ...catalog.themes.filter((entry) => entry.themeKey !== DEFAULT_THEME_KEY)]
           .map((entry) => {
           const active = entry.themeKey === themeKey;
+          const targetMode = modeFor(modeId, currentModes, entry.modes);
           return (
             <div key={entry.themeKey} className={`tt__theme${active ? " is-active" : ""}`} role="listitem">
               <button
                 type="button"
                 className="tt__theme-select"
-                aria-busy={pendingKey === entry.themeKey + "|" + modeFor(modeId, currentModes, entry.modes)}
-                disabled={pendingKey !== null}
+                aria-busy={pendingKey === entry.themeKey + "|" + targetMode}
+                aria-disabled={pendingKey !== null}
                 onClick={() =>
                   void select(
                     entry.themeKey,
@@ -231,15 +225,15 @@ function Switcher() {
                     // stays System; a fixed mode maps by polarity
                     // (`modeFor`), so the target theme is never sent a mode
                     // it does not carry.
-                    modeFor(modeId, currentModes, entry.modes),
+                    targetMode,
                   )
                 }
               >
                 {active ? <Check size={15} aria-hidden="true" /> : <span className="tt__theme-dot" />}
-                <span>{disambiguated(entry)}</span>
+                <span>{entry.themeKey === DEFAULT_THEME_KEY ? "immediately.run default" : disambiguated(entry)}</span>
               </button>
               {active && <span className="tt__active-badge">active</span>}
-              {entry.themeKey !== "immediately-run-default" && (
+              {entry.themeKey !== DEFAULT_THEME_KEY && (
                 <button
                   type="button"
                   className="tt__remove"
@@ -254,7 +248,7 @@ function Switcher() {
           );
         })}
         {catalog.themes.length === 0 && (
-          <p className="tt__note">No themes yet. Add one from a repository or space.</p>
+          <p className="tt__note">No added themes yet. Add one from a repository or space.</p>
         )}
       </div>
 

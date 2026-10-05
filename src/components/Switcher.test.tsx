@@ -84,6 +84,46 @@ describe('R3-847 — a refused selection stays inline', () => {
     });
   });
 
+  it('a THEME-ROW refusal also stays inline (the item\'s named path: a stale catalogue row)', async () => {
+    held.catalog = {
+      themes: [
+        {
+          themeKey: 'danube-dusk',
+          label: 'Danube Dusk',
+          modes: [
+            { id: 'light', polarity: 'light' },
+            { id: 'dark', polarity: 'dark' },
+          ],
+        },
+      ],
+    };
+    nextSelection = async () => {
+      const e = new Error('invalid-params: unknown theme') as Error & { code?: string };
+      e.code = 'invalid-params';
+      throw e;
+    };
+    const { container } = render(<Switcher />);
+    const row = [...container.querySelectorAll('.tt__theme-select')].find(
+      (b) => (b.textContent || '').includes('Danube'),
+    ) as HTMLElement;
+    expect(row).toBeTruthy();
+    row.click();
+    await waitFor(() => {
+      expect(container.querySelector('.tt__note--err')?.textContent).toContain("That theme isn't available right now");
+    });
+    expect(container.querySelector('section.tt')).toBeTruthy();
+    // A repeat click while nothing is in flight still works (the guard only
+    // blocks during flight): the default row stays actionable.
+    nextSelection = async () => {};
+    const defaultRow = [...container.querySelectorAll('.tt__theme-select')].find(
+      (b) => (b.textContent || '').includes('immediately.run default'),
+    ) as HTMLElement;
+    defaultRow.click();
+    await waitFor(() => {
+      expect(setSelection).toHaveBeenLastCalledWith({ theme: 'immediately-run-default', mode: 'system' });
+    });
+  });
+
   it('with an empty catalogue the default row renders', () => {
     held.catalog = { themes: [] };
     const { container } = render(<Switcher />);

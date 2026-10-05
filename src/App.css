@@ -136,6 +136,16 @@
   text-align: left;
   padding: 4px 0;
 }
+
+/* R3-847 — an in-flight selection (aria-disabled, not disabled: the control
+   keeps focus instead of blurring to <body>). */
+.tt__theme-select[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: default;
+}
+.tt__opt[aria-disabled="true"] {
+  opacity: 0.55;
+}
 .tt__theme-dot {
   width: 10px;
   height: 10px;

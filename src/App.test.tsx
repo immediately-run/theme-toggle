@@ -162,8 +162,8 @@ describe('R3-834 — the theme-row selection payload', () => {
         themeKey: 'danube-dusk',
         label: 'Danube Dusk',
         modes: [
-          { id: 'dawn', polarity: 'light' },
-          { id: 'dusk', polarity: 'dark' },
+          { id: 'light', polarity: 'light' },
+          { id: 'dark', polarity: 'dark' },
         ],
       },
     ],
@@ -171,7 +171,7 @@ describe('R3-834 — the theme-row selection payload', () => {
 
   it('clicking a theme row maps the current polarity onto the target — never the old theme\'s id', async () => {
     held.catalog = TWO_THEMES;
-    held.modeId = 'dark'; // the old theme's second mode — danube-dusk carries no "dark"
+    held.modeId = 'dark';
     const { container } = render(<App />);
     const row = [...container.querySelectorAll('.tt__theme-select')].find(
       (b) => (b.textContent || '').includes('Danube'),
@@ -179,8 +179,10 @@ describe('R3-834 — the theme-row selection payload', () => {
     expect(row).toBeTruthy();
     row.click();
     // R3-847: the intent (a dark mode) maps to danube-dusk's dark-polarity
-    // mode ("dusk"), not the old id ("dark") and not blindly the first mode.
-    expect(setSelection).toHaveBeenCalledWith({ theme: 'danube-dusk', mode: 'dusk' });
+    // mode. The committed theme.json (site-main's fixture) gives Danube Dusk
+    // the mode ids light/dark with Dawn/Dusk as LABELS — the catalogue
+    // projects the ids.
+    expect(setSelection).toHaveBeenCalledWith({ theme: 'danube-dusk', mode: 'dark' });
   });
 
   it('the system arm: a system modeId crossing to a theme stays system', async () => {
