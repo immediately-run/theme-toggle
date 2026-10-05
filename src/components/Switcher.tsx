@@ -163,7 +163,7 @@ function Switcher() {
           if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
           e.preventDefault();
           const group = e.currentTarget;
-          const opts = [...group.querySelectorAll<HTMLElement>(".tt__opt:not(:disabled)")];
+          const opts = [...group.querySelectorAll<HTMLElement>('.tt__opt:not([aria-disabled="true"])')];
           if (opts.length < 2) return;
           const at = opts.indexOf(document.activeElement as HTMLElement);
           const dir = e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 1;

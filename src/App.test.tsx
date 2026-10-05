@@ -2,7 +2,7 @@
 // `useHostTheme()` → `html[data-theme]`, never `prefers-color-scheme` (the OS
 // setting, not the host's), and the mode control is one line, always.
 import { readFileSync } from 'node:fs';
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // The SDK boundary: `useHostTheme`, the catalog and the selection setter are
@@ -135,10 +135,10 @@ describe('R3-834 — the mode control is a real radiogroup', () => {
     held.modeId = 'light';
     // (The roving tabindex is derived from the selection, so a re-render moves
     // the stop; the arrows move within whatever the current stop is. One
-    // selection is in flight at a time (R3-847's latch), so let it settle
-    // before the next arrow drives another select.)
-    await Promise.resolve();
-    await Promise.resolve();
+    // selection is in flight at a time (R3-847's latch), so let it settle —
+    // the options are aria-disabled while it runs — before the next arrow
+    // drives another select.)
+    await waitFor(() => expect(opts[1].getAttribute('aria-busy')).toBe('false'));
     opts[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
     expect(document.activeElement).toBe(opts[0]);
     expect(setSelection).toHaveBeenLastCalledWith({ theme: 'immediately-run-default', mode: 'system' });
