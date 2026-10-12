@@ -19,4 +19,4 @@ Requires the elevated `theme:set` + `theme:sources` + `task:invoke`
 capabilities (the `widget.theme` ceiling in `defaults.ts`); a fork without them
 degrades to read-only.
 
-Built against `@immediately-run/sdk` 0.59.0 (the widened theme surface).
+Built against `@immediately-run/sdk` 0.90.1 (the widened theme surface, plus `modeSelection` — R3-829).

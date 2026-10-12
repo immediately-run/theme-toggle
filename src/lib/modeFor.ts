@@ -13,15 +13,17 @@ export interface ThemeModeRef {
 }
 
 /** The mode the target theme should be selected with, given the current
- *  selection. Pure; never throws — an unknown current mode or an empty target
- *  falls back to the target's first mode, then to 'system'. */
+ *  selection — `modeSelection` (a mode id or 'system'), never the resolved
+ *  `modeId`, which is never 'system' (HOST_THEMING_SPEC §9.1, R3-829). Pure;
+ *  never throws — an unknown current mode or an empty target falls back to
+ *  the target's first mode, then to 'system'. */
 export function modeFor(
-  currentModeId: string,
+  currentSelection: string,
   currentModes: readonly ThemeModeRef[],
   targetModes: readonly ThemeModeRef[],
 ): string {
-  if (currentModeId === 'system') return 'system';
-  const polarity = currentModes.find((m) => m.id === currentModeId)?.polarity;
+  if (currentSelection === 'system') return 'system';
+  const polarity = currentModes.find((m) => m.id === currentSelection)?.polarity;
   if (!polarity) return targetModes[0]?.id ?? 'system';
   return targetModes.find((m) => m.polarity === polarity)?.id ?? targetModes[0]?.id ?? 'system';
 }

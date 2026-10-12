@@ -11,6 +11,7 @@ type Entry = { themeKey: string; label: string; modes: Mode[] };
 const held = {
   themeKey: 'repo|github:owner/themes|danube-dusk',
   modeId: 'dark' as string,
+  modeSelection: 'dark' as string,
   catalog: { themes: [] as Entry[] },
 };
 // What the SDK mock's setHostThemeSelection does with the next call.
@@ -19,7 +20,7 @@ const setSelection = vi.fn((...args: [{ theme: string; mode: string }]) => nextS
 
 vi.mock('@immediately-run/sdk', () => ({
   useHostTheme: () => 'dark' as const,
-  useHostThemeSelection: () => ({ themeKey: held.themeKey, modeId: held.modeId }),
+  useHostThemeSelection: () => ({ themeKey: held.themeKey, modeId: held.modeId, modeSelection: held.modeSelection }),
   useThemeCatalog: () => held.catalog,
   setHostThemeSelection: (sel: { theme: string; mode: string }) => setSelection(sel),
   addThemeSource: async () => {},
@@ -34,6 +35,7 @@ afterEach(() => {
   setSelection.mockClear();
   held.themeKey = 'repo|github:owner/themes|danube-dusk';
   held.modeId = 'dark';
+  held.modeSelection = 'dark';
   held.catalog = { themes: [] };
   nextSelection = async () => {};
 });
@@ -184,5 +186,46 @@ describe('R3-847 — a refused selection stays inline', () => {
     expect(line).toContain('Unavailable theme');
     expect(line).not.toContain('danube-dusk');
     expect(line).not.toContain('repo|github');
+  });
+});
+
+describe('R3-829 — the System segment follows modeSelection, not the resolved modeId', () => {
+  const DEFAULT_WITH_MODES = {
+    themes: [
+      {
+        themeKey: 'immediately-run-default',
+        label: 'immediately.run default',
+        modes: [
+          { id: 'light', polarity: 'light' as const },
+          { id: 'dark', polarity: 'dark' as const },
+        ],
+      },
+    ],
+  };
+
+  const checked = (container: HTMLElement) =>
+    [...container.querySelectorAll('.tt__opt[aria-checked="true"]')].map((b) => b.textContent);
+
+  it('System chosen on a dark OS: System is the one checked segment and the readout names the resolved mode', () => {
+    held.themeKey = 'immediately-run-default';
+    held.catalog = DEFAULT_WITH_MODES;
+    held.modeId = 'dark'; // §9.1: the resolved mode, never 'system'
+    held.modeSelection = 'system';
+    const { container } = render(<Switcher />);
+    expect(checked(container)).toEqual(['System']);
+    expect(container.querySelector('.tt__opt.is-active')?.textContent).toBe('System');
+    expect(container.querySelector('.tt__current-mode')?.textContent).toBe(' · System default (dark)');
+    // The System segment is also the radio group's tab stop.
+    expect(container.querySelector('.tt__opt[tabindex="0"]')?.textContent).toBe('System');
+  });
+
+  it('a fixed mode chosen: that segment is checked and the readout names it', () => {
+    held.themeKey = 'immediately-run-default';
+    held.catalog = DEFAULT_WITH_MODES;
+    held.modeId = 'light';
+    held.modeSelection = 'light';
+    const { container } = render(<Switcher />);
+    expect(checked(container)).toEqual(['light']);
+    expect(container.querySelector('.tt__current-mode')?.textContent).toBe(' · light');
   });
 });
