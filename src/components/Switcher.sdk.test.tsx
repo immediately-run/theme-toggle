@@ -1,27 +1,19 @@
 // R3-829 review round 1 (1-A-1) — the switcher fed by the REAL SDK parse, not a
 // hand-typed selection. The original bug stayed green because a mock handed the
 // switcher `modeId: 'system'`, which no host sends (§9.1). Here the SDK is not
-// mocked: a fake host runtime (`globalThis.__immediatelyRun__`, the transport
-// the SDK resolves) delivers wire-shaped `theme` / `theme-catalog` pushes, and
+// mocked: the SDK's own test double (`createMockHost`) installs the host
+// transport and delivers wire-shaped `theme` / `theme-catalog` pushes, and
 // the SDK's own parse produces the selection the switcher reads.
 import { act, cleanup, render } from '@testing-library/react';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { createMockHost } from '@immediately-run/sdk/testing';
 
 type Msg = { type: string } & Record<string, unknown>;
-const handlers = new Set<(msg: Msg) => void>();
-const hostPush = (msg: Msg) => act(() => handlers.forEach((h) => h(msg)));
+const host = createMockHost();
+const hostPush = (msg: Msg) => act(() => host.emit(msg));
 
-beforeAll(() => {
-  (globalThis as { __immediatelyRun__?: unknown }).__immediatelyRun__ = {
-    transport: {
-      sendMessage: () => {},
-      onMessage: (h: (msg: Msg) => void) => {
-        handlers.add(h);
-        return { dispose: () => handlers.delete(h) };
-      },
-    },
-  };
-});
+beforeAll(() => host.install());
+afterAll(() => host.uninstall());
 
 afterEach(cleanup);
 
