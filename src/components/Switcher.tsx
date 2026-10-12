@@ -27,6 +27,7 @@ import {
 } from "@immediately-run/sdk";
 import { selectTheme } from "../lib/select";
 import { modeFor } from "../lib/modeFor";
+import { activeSegment, modeReadout } from "./segments";
 
 /** The `open-bundle` task result (OPEN_BUNDLE_SPEC §2): a picked location. */
 interface OpenBundleResult {
@@ -53,7 +54,11 @@ const DEFAULT_THEME = {
 };
 
 function Switcher() {
-  const { themeKey, modeId } = useHostThemeSelection();
+  const selection = useHostThemeSelection();
+  const { themeKey } = selection;
+  // R3-829 — the checked segment comes from the SELECTION (`modeSelection`),
+  // never from the resolved `modeId`, which is never "system" (§9.1).
+  const segment = activeSegment(selection);
   const catalog = useThemeCatalog();
   const [addState, setAddState] = useState<AddState>({ status: "idle" });
   // R3-847 — a refused selection surfaces HERE, inline, and the switcher (and
@@ -75,10 +80,9 @@ function Switcher() {
   // "System default" is always offered.
   const currentModes = currentEntry?.modes ?? [];
   // The tab stop derived ONCE (APG radio group: the checked radio, else the
-  // first): a modeId matching no option must not drop the whole group out of
+  // first): a selection matching no option must not drop the whole group out of
   // the tab order (R3-834 review round 2).
-  const tabStopMode =
-    modeId === "system" || currentModes.some((m) => m.id === modeId) ? modeId : "system";
+  const tabStopMode = currentModes.some((m) => m.id === segment) ? segment : "system";
 
   /** One selection, caught: a refusal becomes an inline note, never a
    *  region-killing unhandled rejection (R3-847). */
@@ -145,7 +149,7 @@ function Switcher() {
               catalogue reads "Unavailable theme". */}
           {currentEntry ? disambiguated(currentEntry) : "Unavailable theme"}
           <span className="tt__current-mode">
-            {modeId === "system" ? " · System default" : ` · ${modeId}`}
+            {` · ${modeReadout(selection)}`}
           </span>
         </span>
       </div>
@@ -175,11 +179,11 @@ function Switcher() {
         <button
           type="button"
           role="radio"
-          aria-checked={modeId === "system"}
+          aria-checked={segment === "system"}
           aria-busy={pendingKey === themeKey + "|system"}
           aria-disabled={pendingKey !== null}
           tabIndex={tabStopMode === "system" ? 0 : -1}
-          className={`tt__opt${modeId === "system" ? " is-active" : ""}`}
+          className={`tt__opt${segment === "system" ? " is-active" : ""}`}
           onClick={() => void select(themeKey, "system")}
         >
           <Monitor size={15} aria-hidden="true" />
@@ -190,11 +194,11 @@ function Switcher() {
             key={m.id}
             type="button"
             role="radio"
-            aria-checked={modeId === m.id}
+            aria-checked={segment === m.id}
             aria-busy={pendingKey === themeKey + "|" + m.id}
             aria-disabled={pendingKey !== null}
             tabIndex={tabStopMode === m.id ? 0 : -1}
-            className={`tt__opt${modeId === m.id ? " is-active" : ""}`}
+            className={`tt__opt${segment === m.id ? " is-active" : ""}`}
             onClick={() => void select(themeKey, m.id)}
           >
             {m.polarity === "dark" ? (
@@ -216,7 +220,7 @@ function Switcher() {
         {[DEFAULT_THEME, ...catalog.themes.filter((entry) => entry.themeKey !== DEFAULT_THEME_KEY)]
           .map((entry) => {
           const active = entry.themeKey === themeKey;
-          const targetMode = modeFor(modeId, currentModes, entry.modes);
+          const targetMode = modeFor(segment, currentModes, entry.modes);
           return (
             <div key={entry.themeKey} className={`tt__theme${active ? " is-active" : ""}`} role="listitem">
               <button

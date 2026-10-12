@@ -10,13 +10,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 // inert no-ops.
 const held = {
   theme: 'light' as 'light' | 'dark',
-  modeId: 'system',
+  modeSelection: 'system',
   catalog: { themes: [] as { themeKey: string; label: string; modes: { id: string; polarity: 'light' | 'dark' }[] }[] },
 };
 const setSelection = vi.fn();
 vi.mock('@immediately-run/sdk', () => ({
   useHostTheme: () => held.theme,
-  useHostThemeSelection: () => ({ themeKey: 'immediately-run-default', modeId: held.modeId }),
+  // §9.1: `modeId` is the RESOLVED mode (never 'system'); the selection is `modeSelection` (R3-829).
+  useHostThemeSelection: () => ({
+    themeKey: 'immediately-run-default',
+    modeId: held.modeSelection === 'system' ? held.theme : held.modeSelection,
+    modeSelection: held.modeSelection,
+  }),
   useThemeCatalog: () => held.catalog,
   setHostThemeSelection: (...args: unknown[]) => setSelection(...(args as [])),
   addThemeSource: async () => {
@@ -33,7 +38,7 @@ import App from './App';
 afterEach(() => {
   cleanup();
   setSelection.mockClear();
-  held.modeId = 'system';
+  held.modeSelection = 'system';
   held.catalog = { themes: [] };
 });
 
@@ -85,7 +90,7 @@ describe('R3-834 — the mode control is one line', () => {
 // a roving tabindex (the checked option is the tab stop) and arrows move
 // focus AND select — pinned here.
 describe('R3-834 — the mode control is a real radiogroup', () => {
-  it('a modeId matching no option still leaves the group tabbable (the APG fallback: the first radio)', () => {
+  it('a selection matching no option still leaves the group tabbable (the APG fallback: the first radio)', () => {
     held.catalog = {
       themes: [
         {
@@ -100,7 +105,7 @@ describe('R3-834 — the mode control is a real radiogroup', () => {
     };
     // A stale mode id (the round-2 finding: the old theme's id sent to a new
     // theme) must not drop the whole group out of the tab order.
-    held.modeId = 'a-stale-mode-from-another-theme';
+    held.modeSelection = 'a-stale-mode-from-another-theme';
     const { container } = render(<App />);
     const opts = [...container.querySelectorAll<HTMLElement>('.tt__opt')];
     expect(opts[0].tabIndex).toBe(0); // the first option is the tab stop
@@ -132,7 +137,7 @@ describe('R3-834 — the mode control is a real radiogroup', () => {
     expect(document.activeElement).toBe(opts[1]);
     expect(setSelection).toHaveBeenCalledWith({ theme: 'immediately-run-default', mode: 'light' });
     // The selection follows: the newly selected option becomes the tab stop.
-    held.modeId = 'light';
+    held.modeSelection = 'light';
     // (The roving tabindex is derived from the selection, so a re-render moves
     // the stop; the arrows move within whatever the current stop is. One
     // selection is in flight at a time (R3-847's latch), so let it settle —
@@ -175,7 +180,7 @@ describe('R3-834 — the theme-row selection payload', () => {
 
   it('clicking a theme row maps the current polarity onto the target — never the old theme\'s id', async () => {
     held.catalog = TWO_THEMES;
-    held.modeId = 'dark';
+    held.modeSelection = 'dark';
     const { container } = render(<App />);
     const row = [...container.querySelectorAll('.tt__theme-select')].find(
       (b) => (b.textContent || '').includes('Danube'),
@@ -189,9 +194,9 @@ describe('R3-834 — the theme-row selection payload', () => {
     expect(setSelection).toHaveBeenCalledWith({ theme: 'danube-dusk', mode: 'dark' });
   });
 
-  it('the system arm: a system modeId crossing to a theme stays system', async () => {
+  it('the system arm: a system selection crossing to a theme stays system', async () => {
     held.catalog = TWO_THEMES;
-    held.modeId = 'system';
+    held.modeSelection = 'system';
     const { container } = render(<App />);
     const row = [...container.querySelectorAll('.tt__theme-select')].find(
       (b) => (b.textContent || '').includes('Danube'),
@@ -202,7 +207,7 @@ describe('R3-834 — the theme-row selection payload', () => {
 
   it('the empty-modes arm: a theme with no modes falls back to system', async () => {
     held.catalog = { themes: [...TWO_THEMES.themes, { themeKey: 'empty-theme', label: 'Empty', modes: [] as Mode[] }] };
-    held.modeId = 'dark';
+    held.modeSelection = 'dark';
     const { container } = render(<App />);
     const row = [...container.querySelectorAll('.tt__theme-select')].find(
       (b) => (b.textContent || '').includes('Empty'),
