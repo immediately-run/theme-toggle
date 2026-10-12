@@ -6,11 +6,10 @@
 // with "system" could therefore never light the System segment; every decision
 // about the selection reads `modeSelection` instead.
 
+import type { HostThemeSelection } from "@immediately-run/sdk";
+
 /** The two fields of `HostThemeSelection` these helpers read. */
-export interface ModeSelectionRef {
-  modeId: string;
-  modeSelection: string;
-}
+export type ModeSelectionRef = Pick<HostThemeSelection, "modeId" | "modeSelection">;
 
 /** The checked segment: `'system'` or a mode id of the active theme. */
 export function activeSegment(sel: ModeSelectionRef): string {
